@@ -13,6 +13,9 @@ const SCREENS = [
   , drawStepScreen
   , drawStepScreen
   , drawErrorScreen
+  , drawSuccessScreen
+  , drawMessageScreen
+  , drawTeardownScreen
 ];
 const PORTS = ['A', 'B', 'C', 'D', 'E', 'SR', 'BRN', 'COM', 'ORG']
 const WIRE_COLORS = [
@@ -26,8 +29,11 @@ const WIRE_COLORS = [
   'green-yellow-red-white',
   'lorem-ipsum-dolor-sit-amet-consectetur',
 ];
+
 let currentScreenI = 0;
+let serialPort = null;
 let cmd = null;
+let drawTimer = null;
 
 main();
 
@@ -67,7 +73,7 @@ async function main()
     path = port.path;
   }
 
-  const serialPort = new SerialPort(path, {
+  serialPort = new SerialPort(path, {
     baudRate: baudRate || 9600,
     dataBits: 8,
     stopBits: 1,
@@ -96,6 +102,15 @@ async function main()
   cmd.once('ready', drawScreen);
 
   serialPort.open();
+
+  setTimeout(shutdown, 30000);
+}
+
+function shutdown()
+{
+  clearTimeout(drawTimer);
+  serialPort.close();
+  cmd.destroy();
 }
 
 function rand(min, max)
@@ -126,8 +141,8 @@ async function drawStepScreen()
   await cmd.putstr(`do`);
   */
 
-  await cmd.gfx.circleFilled({x: 11, y: 33, radius: 7, color: colors.WHITE});
-  await cmd.gfx.circleFilled({x: 11, y: 65, radius: 7, color: colors.WHITE});
+  await cmd.gfx.circleFilled({x: 11, y: 32, radius: 7, color: colors.WHITE});
+  await cmd.gfx.circleFilled({x: 11, y: 64, radius: 7, color: colors.WHITE});
 
   const parts = WIRE_COLORS[rand(0, WIRE_COLORS.length)].split('-');
   const lines = [parts.shift()];
@@ -162,14 +177,50 @@ async function drawStepScreen()
 
 async function drawErrorScreen()
 {
-  await cmd.gfx.bgColor(colors.RED);
+  await cmd.gfx.bgColor(colors.hex('#EE0000'));
   await cmd.gfx.cls();
   await cmd.txt.fgColor(colors.WHITE);
   await cmd.txt.width(3);
   await cmd.txt.height(3);
   await cmd.txt.opacity(false);
-  await cmd.gfx.moveTo({x: 17, y: 52});
-  await cmd.putstr('!!!!!');
+  await cmd.gfx.moveTo({x: 32, y: 52});
+  await cmd.putstr('NOK');
+}
+
+async function drawSuccessScreen()
+{
+  await cmd.gfx.bgColor(colors.hex('#00E600'));
+  await cmd.gfx.cls();
+  await cmd.txt.fgColor(colors.WHITE);
+  await cmd.txt.width(3);
+  await cmd.txt.height(3);
+  await cmd.txt.opacity(false);
+  await cmd.gfx.moveTo({x: 42, y: 52});
+  await cmd.putstr('OK');
+}
+
+async function drawMessageScreen()
+{
+  await cmd.gfx.bgColor(colors.BLACK);
+  await cmd.gfx.cls();
+  await cmd.txt.fgColor(colors.WHITE);
+  await cmd.txt.width(3);
+  await cmd.txt.height(3);
+  await cmd.txt.opacity(false);
+  await cmd.gfx.moveTo({x: 32, y: 52});
+  await cmd.putstr('???');
+}
+
+async function drawTeardownScreen()
+{
+  await cmd.gfx.bgColor(colors.hex('#EEAA00'));
+  await cmd.gfx.cls();
+  await cmd.txt.fgColor(colors.WHITE);
+  await cmd.txt.width(3);
+  await cmd.txt.height(3);
+  await cmd.txt.opacity(false);
+  await cmd.gfx.moveTo({x: 35, y: 45});
+  await cmd.putstr('...');
 }
 
 async function drawScreen()
@@ -190,5 +241,5 @@ async function drawScreen()
     console.error(`Failed to draw screen: ${err.stack}`);
   }
 
-  setTimeout(drawScreen, 1000);
+  drawTimer = setTimeout(drawScreen, 1000);
 }
